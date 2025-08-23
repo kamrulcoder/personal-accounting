@@ -1,7 +1,8 @@
 // src/routes/auth.routes.js
 
 import express from 'express';
-import {  forgotPasswordController, loginController, logoutController, registerController, resetPasswordController,  } from '../controllers/auth.controllers.js';
+import {  changePasswordController, forgotPasswordController, loginController, logoutController, registerController, resetPasswordController,  } from '../controllers/auth.controllers.js';
+import protectRoute from '../middlewares/authMiddleware.js';
 const router = express.Router();
 
 // ========== Auth Routes ============= //
@@ -14,5 +15,8 @@ router.post('/logout', logoutController);
 // Password reset
 router.post("/forgot-password",  forgotPasswordController);
 router.post("/reset-password",  resetPasswordController);
+
+// change password (protected route) can be added later
+router.post("/change-password", protectRoute(), changePasswordController);
 
 export default router;
