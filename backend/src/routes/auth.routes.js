@@ -1,10 +1,11 @@
 // src/routes/auth.routes.js
 
 import express from 'express';
+import { loginController, logoutController, registerController } from '../controllers/auth.controllers.js';
 const router = express.Router();
 
-router.get('/', (req, res) => {
-    res.send('Auth  route is working!');
-});
+router.post('/register', registerController); 
+router.post('/login', loginController);
+router.post('/logout', logoutController);
 
 export default router;
