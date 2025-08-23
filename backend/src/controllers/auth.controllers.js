@@ -1,7 +1,11 @@
 
 // backend/src/controllers/auth.controllers.js
 import User from '../models/User.model.js';
+import createPasswordResetToken from '../utils/createPasswordResetToken.js';
+import { resetPasswordEmailTemplate } from '../utils/emailTemplete.js';
 import generateTokenAndSetCookie from '../utils/generateToken.js';
+import { sendEmail } from '../utils/sendEmail.js';
+import crypto from 'crypto';
 
 export const registerController = async (req, res) => {
 
@@ -71,3 +75,83 @@ export const logoutController = async (req, res) => {
     });
     return res.status(200).json({ message: 'Logout successful' });
 }
+
+
+export const forgotPasswordController = async (req, res) => {
+    try {
+        const { email } = req.body;
+        // check all fields are provided
+        if (!email) {
+            return res.status(400).json({ message: 'Email is required' });
+        }
+        // find user by email
+        const user = await User.findOne({ email });
+        // not found user
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+        // created reset token
+        const rawToken = createPasswordResetToken(user);
+        await user.save({ validateBeforeSave: false }); // save user without validation
+
+        // RESET URL (FRONTEND PAGE)
+
+        const resetURL = `${process.env.FRONTEND_URL}/reset-password?token=${rawToken}`;
+        await sendEmail({
+            to: user.email,
+            subject: 'Password Reset Request',
+            html: resetPasswordEmailTemplate(user.username, resetURL),
+            text: ` Reset your password: ${resetURL} (valid for 15 minutes) `
+        });
+        return res.status(200).json({ message: 'Password reset email sent' });
+
+    } catch (error) {
+        try {
+            if (req.body.email) {
+                const user = await User.findOne({ email: req.body.email });
+                if (user) {
+                    user.passwordResetToken = null;
+                    user.passwordResetExpires = null;
+                    await user.save({ validateBeforeSave: false }); // save user without validation
+                }
+
+            }
+        } catch (_) {
+            // ignore   error    
+        }
+        res.status(500).json({ message: 'Server error', error: error.message });
+    }
+}
+export const resetPasswordController = async (req, res) => {
+    try {
+        const { token, password } = req.body;
+
+        if (!token || !password) {
+            return res.status(400).json({ message: "All fields are required" });
+        }
+
+        // user থেকে আসা raw token কে hash করে DB এর সাথে match করা
+        const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
+
+        // DB থেকে user খুঁজে বের করা
+        const user = await User.findOne({
+            passwordResetToken: hashedToken,
+            passwordResetExpires: { $gt: Date.now() }, // token expired check
+        });
+
+        if (!user) {
+            return res.status(400).json({ message: "Invalid or expired token" });
+        }
+
+        // password update করা
+        user.passwordHash = password;
+        user.passwordResetToken = null;
+        user.passwordResetExpires = null;
+
+        await user.save();
+
+        return res.status(200).json({ message: "Password reset successful" });
+    } catch (error) {
+        return res.status(500).json({ message: "Server error", error: error.message });
+    }
+};

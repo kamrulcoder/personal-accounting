@@ -40,8 +40,8 @@ const userSchema = new mongoose.Schema(
         avatarUrl: { type: String, default: null },
 
         // ⬇️ এইগুলোও ডিফল্টে বাদ
-        resetPasswordToken: { type: String, default: null, select: false },
-        resetPasswordExpires: { type: Date, default: null, select: false },
+        passwordResetToken: { type: String, default: null, select: false },
+        passwordResetExpires: { type: Date, default: null, select: false },
         emailVerificationToken: { type: String, default: null, select: false },
         emailVerificationExpires: { type: Date, default: null, select: false },
 
