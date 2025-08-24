@@ -21,7 +21,7 @@ const userSchema = new mongoose.Schema(
         passwordHash: {
             type: String,
             required: [true, "Password is required"],
-            select:false, // password hash will not be returned in queries by default 
+            select: false, // password hash will not be returned in queries by default 
 
         },
         isActive: {
@@ -34,8 +34,8 @@ const userSchema = new mongoose.Schema(
         },
         role: {
             type: String,
-            enum: ["user", "admin"],
-            default: "user",
+            enum: ["user", "admin", "superAdmin"], // এখন superAdmin ও valid
+            default: "user"
         },
         avatarUrl: { type: String, default: null },
 

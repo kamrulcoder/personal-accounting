@@ -24,7 +24,7 @@ export const globalMiddlewares = [
 // all routes here 
 export const routes = [
     { path: '/api/auth', router: authRoutes },
-    { path: '/api/users', router: userRoutes },
+    { path: '/api/user', router: userRoutes },
 
     // Add more routes here...
 ];

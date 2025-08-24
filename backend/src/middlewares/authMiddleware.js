@@ -17,7 +17,7 @@ const protectRoute = (options = {}) => {
             if (options.requireVerified && !user.isVerified) {
                 return res.status(403).json({ message: "Account not verified" });
             }
-
+           
             // Role check (allowedRoles is array)
             if (options.allowedRoles && !options.allowedRoles.includes(user.role)) {
                 return res.status(403).json({ message: "You don't have permission" });
