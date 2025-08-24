@@ -1,8 +1,9 @@
 
 // backend/src/controllers/auth.controllers.js
 import User from '../models/User.model.js';
+import createEmailVerifyToken from '../utils/createEmailVerifyToken.js';
 import createPasswordResetToken from '../utils/createPasswordResetToken.js';
-import { resetPasswordEmailTemplate } from '../utils/emailTemplete.js';
+import { resetPasswordEmailTemplate, verifyEmailTemplate } from '../utils/emailTemplete.js';
 import generateTokenAndSetCookie from '../utils/generateToken.js';
 import { sendEmail } from '../utils/sendEmail.js';
 import crypto from 'crypto';
@@ -177,6 +178,77 @@ export const changePasswordController = async (req, res) => {
         user.passwordHash = newPassword;
         await user.save();
         return res.status(200).json({ message: "Password changed successfully" });
+    } catch (error) {
+        return res.status(500).json({ message: "Server error", error: error.message });
+    }
+}
+
+
+
+export const sendEmailVerificationController = async (req, res) => {
+    try {
+        const { email } = req.body;
+        // check all fields are provided
+        if (!email) {
+            return res.status(400).json({ message: 'Email is required' });
+        }
+        // find user by email
+        const user = await User.findOne({ email });
+        // not found user
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+        // create verification token
+        const rawToken = createEmailVerifyToken(user);
+        await user.save({ validateBeforeSave: false }); // save user without validation
+
+        // VERIFICATION URL (FRONTEND PAGE)
+        const verificationURL = `${process.env.FRONTEND_URL}/verify-email?token=${rawToken}`;
+
+        await sendEmail({
+            to: user.email,
+            subject: 'Verify Your Account',
+            html: verifyEmailTemplate(user.username, verificationURL),
+            text: `verify  your account : ${verificationURL} (valid for 15 minutes)`,
+        });
+
+        return res.status(200).json({ message: 'Verification email sent' });
+
+    } catch (error) {
+        res.status(500).json({ message: 'Server error', error: error.message });
+    }
+}
+
+
+export const verifyEmailVerificationController = async (req, res) => {
+    try {
+        const { token } = req.params;
+
+        if (!token) {
+            return res.status(400).json({ message: 'Token is required' });
+        }
+
+        // user থেকে আসা raw token কে hash করে DB এর সাথে match করা
+        const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
+
+        // DB থেকে user খুঁজে বের করা
+        const user = await User.findOne({
+            emailVerificationToken: hashedToken,
+            emailVerificationExpires: { $gt: Date.now() }, // token expired check
+        });
+
+        if (!user) {
+            return res.status(400).json({ message: "Invalid or expired token" });
+        }
+
+        // email verified করা
+        user.isVerified = true;
+        user.emailVerificationToken = null;
+        user.emailVerificationExpires = null;
+
+        await user.save();
+
+        return res.status(200).json({ message: "Email verified successfully" });
     } catch (error) {
         return res.status(500).json({ message: "Server error", error: error.message });
     }
