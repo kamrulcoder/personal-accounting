@@ -1,6 +1,11 @@
 
 import User from '../models/User.model.js';
-
+import sharp from "sharp"
+import fs from "fs"
+import path from 'path';
+import { fileURLToPath } from 'url';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 export const changePasswordController = async (req, res) => {
 
@@ -96,10 +101,44 @@ export const singleUserController = async (req, res) => {
 
 export const getAllUsersController = async (req, res) => {
     try {
-       const users = await User.find({_id:{$ne:req.user._id}})
-       return res.status(200).json(users)
+        const users = await User.find({ _id: { $ne: req.user._id } })
+        return res.status(200).json(users)
 
     } catch (error) {
         return res.status(500).json({ message: "Server error", error: error.message });
     }
 }
+
+
+export const changeProfileController = async (req, res) => {
+    try {
+        const uploadFile = req.file;
+        if (!uploadFile) {
+            return res.status(400).json({ message: "No file uploaded" });
+        }
+
+        // Get old user to delete old avatar
+        const user = await User.findById(req.user._id);
+        const oldAvatarPath = user.avatarUrl
+            ? path.join(__dirname, "../../", user.avatarUrl.replace(/^\/+/, ""))
+            : null;
+
+        const fileURLToPath = `/uploads/${uploadFile.filename}`
+
+        const updatedUser = await User.findByIdAndUpdate(
+            req.user._id,
+            { avatarUrl: fileURLToPath },  // new avatar path
+            { new: true }                  // return the updated document
+        );
+
+        // Delete old avatar
+        if (oldAvatarPath && fs.existsSync(oldAvatarPath)) {
+            fs.unlinkSync(oldAvatarPath);
+        }
+
+        res.status(201).json({ message: "Profile image uploaded successfully", updatedUser })
+    } catch (error) {
+        return res.status(500).json({ message: "Internal Server Error ", error: error.message })
+    }
+
+};
